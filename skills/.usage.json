@@ -1,0 +1,41 @@
+{
+  "linux-computer-use": {
+    "archived_at": null,
+    "created_at": "2026-05-23T17:56:18.484665+00:00",
+    "created_by": null,
+    "last_patched_at": "2026-05-23T17:56:34.333618+00:00",
+    "last_used_at": "2026-05-23T17:56:18.507633+00:00",
+    "last_viewed_at": "2026-05-23T17:56:18.484691+00:00",
+    "patch_count": 2,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
+  },
+  "static-site-asset-integration": {
+    "archived_at": null,
+    "created_at": "2026-05-23T14:16:44.927679+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-05-23T14:16:55.004675+00:00",
+    "last_used_at": null,
+    "last_viewed_at": null,
+    "patch_count": 1,
+    "pinned": false,
+    "state": "active",
+    "use_count": 0,
+    "view_count": 0
+  },
+  "static-website-debugging": {
+    "archived_at": null,
+    "created_at": "2026-05-23T14:25:57.621540+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-05-23T16:40:39.009656+00:00",
+    "last_used_at": "2026-05-23T16:40:18.782875+00:00",
+    "last_viewed_at": "2026-05-23T16:40:18.778716+00:00",
+    "patch_count": 3,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
+  }
+}

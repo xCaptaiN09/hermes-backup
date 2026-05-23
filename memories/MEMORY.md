@@ -1,0 +1,1 @@
+User's daily driver is Arch Linux with Hyprland. Main languages are Python, Java, and Kotlin. Active projects include pixie-sddm, echo-sddm, Sortify, bootimg-tools, and rmx3031-archive.pages.dev. User is learning crypto and does a monthly SIP on CoinDCX.
