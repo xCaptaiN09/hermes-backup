@@ -56,3 +56,19 @@ Lines commented out in HARDLINE_PATTERNS:
 - Approvals mode: manual (LLM decides, not hard block)
 - Only disk destruction commands remain hardline blocked
 - Gemini OAuth shared quota — don't set auxiliary providers to google-gemini-cli
+
+## Hyprland Plugin
+
+For compositor-level desktop control (more accurate than ydotool alone):
+https://github.com/xCaptaiN09/hermes-hyprland-plugin
+
+Build and load:
+    git clone https://github.com/xCaptaiN09/hermes-hyprland-plugin
+    cd hermes-hyprland-plugin
+    sudo pacman -S nlohmann-json libdrm pixman cmake
+    cmake -B build -DCMAKE_BUILD_TYPE=Release
+    cmake --build build
+    hyprctl plugin load ./build/hermes-hyprland.so
+
+Add to hyprland.conf for auto-load:
+    plugin = /path/to/hermes-hyprland.so
