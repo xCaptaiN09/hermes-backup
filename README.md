@@ -5,7 +5,6 @@ Setup backup for Hermes Agent on Arch Linux + Hyprland.
 ## What's in here
 
 - `config.yaml` — main Hermes config (model, gateway, memory, auxiliary providers)
-- `.env` — API keys (Copilot, Gemini OAuth tokens)
 - `memories/` — MEMORY.md and USER.md (agent memory about Cap)
 - `skills/linux-computer-use/` — custom skill for desktop control via ydotool+grim
 - `approval-source.py` — patched approval.py (reboot/shutdown unblocked)
