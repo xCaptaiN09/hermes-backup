@@ -1,61 +1,88 @@
 ---
 name: linux-computer-use
-description: "Control the Linux desktop remotely: screenshots, mouse, click, type using grim and ydotool on Wayland/Hyprland."
-version: 1.0.0
+description: Control the Linux desktop remotely using screen_control.py on Wayland/Hyprland. Works like macOS computer_use.
+version: 2.0.0
 author: captain
 license: MIT
 metadata:
   hermes:
-    tags: [linux, wayland, hyprland, screenshot, mouse, keyboard, desktop, remote-control, ydotool, grim]
+    tags: [linux, wayland, hyprland, screenshot, mouse, keyboard, desktop, remote-control, ydotool, grimblast, computer-use]
     category: software-development
 ---
 
 # Linux Computer Use (Wayland/Hyprland)
 
-Control Arch Linux Hyprland desktop using grim for screenshots and ydotool for mouse/keyboard input. Resolution: 1920x1080.
+Use screen_control.py for all desktop control.
+Script: ~/.hermes/skills/linux-computer-use/screen_control.py
 
-## Check ydotoold Running
-Always check first:
-terminal('pgrep ydotoold || (ydotoold & sleep 1)')
+Works like macOS computer_use - capture screen, get window positions, click by coordinates.
 
-If ydotool socket connection fails, use the fallback notes in `references/wayland-input-fallbacks.md`.
+## Always Start With Capture
 
-## Screenshot
-terminal('grim /tmp/hermes_screen.png')
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py capture")
 
-## Analyze Screenshot for Coordinates
-Take screenshot, then ask vision: "Return ONLY JSON with x,y of [element]: {x: 100, y: 200}"
-Use returned coordinates for mouse operations.
+Returns screenshot path, cursor position, all windows with exact positions.
 
-## Mouse Move
-terminal('ydotool mousemove --absolute -x X -y Y')
+## Actions
 
-## Click
-terminal('ydotool click 0xC0')
+### Capture (with optional app filter)
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py capture")
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py capture firefox")
 
-## Right Click
-terminal('ydotool click 0xC8')
+### Get Windows
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py windows")
 
-## Double Click
-terminal('ydotool click 0xC0 && sleep 0.1 && ydotool click 0xC0')
+### Get Cursor Position
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py cursor")
 
-## Type Text
-terminal('ydotool type "text here"')
+### Move Mouse
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py move 960 540")
 
-## Key Shortcuts
-terminal('ydotool key 28:1 28:0')   # Enter
-terminal('ydotool key 1:1 1:0')    # Escape
-terminal('ydotool key 29:1 46:1 46:0 29:0')  # Ctrl+C
+### Click
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py click 960 540")
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py click 960 540 right")
 
-## Full Remote Control Flow
-1. pgrep ydotoold or start it
-2. grim /tmp/hermes_screen.png
-3. vision_analyze — get x,y of target
-4. ydotool mousemove to x,y
-5. ydotool click 0xC0
-6. grim /tmp/hermes_screen2.png — verify
-7. send screenshot to Telegram
+### Type Text
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py type hello world")
+
+### Key Shortcuts
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py key return")
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py key escape")
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py key ctrl+c")
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py key ctrl+v")
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py key ctrl+s")
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py key super")
+
+### Focus Window
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py focus firefox")
+
+## Standard Workflow
+
+1. Capture screen - get windows + screenshot
+2. Send screenshot to vision with window boundaries for accurate coordinate detection
+3. Vision returns x,y of target element
+4. Click at coordinates
+5. Verify - capture again, check cursor position, check UI changed
+6. Retry if needed
+
+## Vision Prompt Template
+
+When asking vision for coordinates, include window boundaries:
+This is a 1920x1080 screenshot. The target window TITLE is at x=X, y=Y, width=W, height=H.
+Find ELEMENT within this window and return ONLY JSON: {x: N, y: N}
+
+## Verification After Every Click
+
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py cursor")
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py capture")
 
 ## Send Screenshot to Telegram
-terminal('grim /tmp/hermes_screen.png')
-messaging_send(image='/tmp/hermes_screen.png')
+
+terminal("python3 ~/.hermes/skills/linux-computer-use/screen_control.py capture")
+Then send /tmp/hermes_screen.png via messaging tool.
+
+## Requirements
+- grimblast (AUR) - screenshot with cursor visible
+- ydotool + ydotoold running
+- hyprctl - window positions
+- cursor:no_hardware_cursors = true in hyprland.conf
