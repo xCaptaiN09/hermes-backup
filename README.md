@@ -42,15 +42,14 @@ Lines commented out in HARDLINE_PATTERNS:
 
 1. Install Hermes: `curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash`
 2. Copy config: `cp config.yaml ~/.hermes/config.yaml`
-3. Copy env: `cp .env ~/.hermes/.env`
-4. Copy memories: `cp -r memories/ ~/.hermes/memories/`
-5. Copy skill: `cp -r skills/ ~/.hermes/skills/`
-6. Apply approval patch: `cp approval-source.py ~/.hermes/hermes-agent/tools/approval.py`
-7. Find site-packages path: `/usr/bin/python -c "import tools.approval; import inspect; print(inspect.getfile(tools.approval))"`
-8. Copy to that path and delete pyc cache
-9. Install ydotool: `sudo pacman -S ydotool`
-10. Add to hyprland: `echo "exec-once = ydotoold" >> ~/.config/hypr/hyprland.conf`
-11. Run: `hermes gateway restart`
+3. Copy memories: `cp -r memories/ ~/.hermes/memories/`
+4. Copy skill: `cp -r skills/ ~/.hermes/skills/`
+5. Apply approval patch: `cp approval-source.py ~/.hermes/hermes-agent/tools/approval.py`
+6. Find site-packages path: `/usr/bin/python -c "import tools.approval; import inspect; print(inspect.getfile(tools.approval))"`
+7. Copy to that path and delete pyc cache
+8. Install ydotool: `sudo pacman -S ydotool`
+9. Add to hyprland: `echo "exec-once = ydotoold" >> ~/.config/hypr/hyprland.conf`
+10. Run: `hermes gateway restart`
 
 ## Notes
 - Tirith security is re-enabled (tirith_enabled: true)
