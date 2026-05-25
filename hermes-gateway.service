@@ -11,8 +11,6 @@ WorkingDirectory=/home/captain/.local/lib/python3.14/site-packages
 Environment="PATH=/usr/bin:/home/captain/.local/bin:/home/captain/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 Environment="VIRTUAL_ENV=/home/captain/.local/lib/python3.14/site-packages/venv"
 Environment="HERMES_HOME=/home/captain/.hermes"
-Environment="WAYLAND_DISPLAY=wayland-1"
-Environment="XDG_RUNTIME_DIR=/run/user/1000"
 Restart=always
 RestartSec=5
 RestartMaxDelaySec=300
