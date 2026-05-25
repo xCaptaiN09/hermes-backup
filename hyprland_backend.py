@@ -275,21 +275,31 @@ class HyprlandBackend(ComputerUseBackend):
         if None in (fx, fy, tx, ty):
             return ActionResult(ok=False, action="drag", message="Invalid source or destination coordinate boundaries.")
 
-        # Drag simulation via ydotool pointer motions
+        # Drag simulation via kernel-level pointer events
         try:
-            # Warp cursor to source
+            # 1. Warp cursor to source coordinates
             self.engine.warp_cursor(fx, fy)
             time.sleep(0.1)
-            # Drag down
-            subprocess.run(["ydotool", "mousemove", "--", "0", "0"], check=True)  # Touch event
-            # Trigger drag click-down (left button code 0xC0)
-            subprocess.run(["ydotool", "click", "0xC0"], check=True) # Click
             
-            # Warp cursor to destination
+            # 2. Hold left mouse button down (BTN_LEFT keycode is 272)
+            subprocess.run(["ydotool", "key", "272:1"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            time.sleep(0.1)
+            
+            # 3. Warp cursor to destination coordinates
             self.engine.warp_cursor(tx, ty)
             time.sleep(0.1)
+            
+            # 4. Release left mouse button (BTN_LEFT keycode is 272)
+            subprocess.run(["ydotool", "key", "272:0"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            time.sleep(0.1)
+            
             return ActionResult(ok=True, action="drag", message=f"Dragged from ({fx},{fy}) to ({tx},{ty}).")
         except Exception as e:
+            # Ensure safety release of left button in case of failure
+            try:
+                subprocess.run(["ydotool", "key", "272:0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
             return ActionResult(ok=False, action="drag", message=f"Drag dispatch failure: {str(e)}")
 
     def scroll(
