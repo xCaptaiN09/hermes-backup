@@ -87,8 +87,31 @@ def take_screenshot(output_path="/tmp/hermes_screen.png", with_cursor=True):
     return result.returncode == 0
 
 
+def send_socket_command(payload, socket_path="/tmp/hermes-hyprland.sock"):
+    """Send JSON command to compositor socket and return response."""
+    import socket as sock
+    try:
+        with sock.socket(sock.AF_UNIX, sock.SOCK_STREAM) as s:
+            s.connect(socket_path)
+            s.sendall(json.dumps(payload).encode('utf-8'))
+            response_data = b""
+            while True:
+                chunk = s.recv(65536)
+                if not chunk:
+                    break
+                response_data += chunk
+            return json.loads(response_data.decode('utf-8'))
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def move_mouse(x, y):
-    """Move mouse to absolute coordinates."""
+    """Move mouse to absolute coordinates using Unix socket (fallback to ydotool)."""
+    res = send_socket_command({"action": "move_cursor", "x": x, "y": y})
+    if res.get("success"):
+        return True
+    
+    # Fallback to ydotool
     result = subprocess.run(
         ["ydotool", "mousemove", "--absolute", "-x", str(x), "-y", str(y)],
         capture_output=True,
@@ -98,7 +121,7 @@ def move_mouse(x, y):
 
 
 def click(x=None, y=None, button="left", window_index=None, windows=None):
-    """Click at coordinates or window center."""
+    """Click at coordinates or window center using Unix socket (fallback to ydotool)."""
     if window_index and windows:
         win = next((w for w in windows if w["index"] == window_index), None)
         if win:
@@ -107,14 +130,45 @@ def click(x=None, y=None, button="left", window_index=None, windows=None):
     if x is None or y is None:
         return False
 
-    move_mouse(x, y)
+    # Get original cursor pos first so we can restore it (warp back)
+    orig_x, orig_y = None, None
+    cursor_res = send_socket_command({"action": "get_cursor"})
+    if cursor_res.get("success") and "cursor" in cursor_res:
+        orig_x = cursor_res["cursor"]["x"]
+        orig_y = cursor_res["cursor"]["y"]
 
+    # 1. Warp to target
+    moved = move_mouse(x, y)
+    if not moved:
+        return False
+
+    import time
+    time.sleep(0.05)
+
+    # 2. Try socket click
+    btn_code = {"left": 272, "right": 273, "middle": 274}.get(button, 272)
+    click_res = send_socket_command({"action": "native_click", "button": btn_code})
+    
+    if click_res.get("success"):
+        # Success! Sleep briefly and warp back if we got original coords
+        time.sleep(0.05)
+        if orig_x is not None and orig_y is not None:
+            send_socket_command({"action": "move_cursor", "x": orig_x, "y": orig_y})
+        return True
+
+    # Fallback to ydotool click
     button_code = {"left": "0xC0", "right": "0xC8", "middle": "0xC4"}.get(
         button, "0xC0"
     )
     result = subprocess.run(
         ["ydotool", "click", button_code], capture_output=True, text=True
     )
+    
+    # Warp back if we can
+    time.sleep(0.05)
+    if orig_x is not None and orig_y is not None:
+        send_socket_command({"action": "move_cursor", "x": orig_x, "y": orig_y})
+        
     return result.returncode == 0
 
 
