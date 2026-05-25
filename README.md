@@ -31,15 +31,15 @@ sudo pacman -S ydotool grim slurp
 ```
 
 ### Step 2: Set Up the Compositor Plugin Binary
-No compiling needed! Just copy the pre-compiled compositor plugin binary directly to its permanent path:
+No compiling needed! Just copy the pre-compiled compositor plugin binary directly to the standard hidden plugins path:
 ```bash
-mkdir -p /home/captain/hermes-hyprland-plugin/build
-cp hermes-hyprland.so /home/captain/hermes-hyprland-plugin/build/hermes-hyprland.so
+mkdir -p /home/captain/.config/hypr/plugins
+cp hermes-hyprland.so /home/captain/.config/hypr/plugins/hermes-hyprland.so
 ```
 *Add to `~/.config/hypr/hyprland.conf` to autostart at boot:*
 ```ini
 exec-once = ydotoold
-plugin = /home/captain/hermes-hyprland-plugin/build/hermes-hyprland.so
+plugin = /home/captain/.config/hypr/plugins/hermes-hyprland.so
 ```
 
 ### Step 3: Install & Sync the Hermes Agent
