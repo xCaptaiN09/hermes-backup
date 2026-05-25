@@ -1,7 +1,7 @@
 model:
   default: gpt-5.4-mini
   provider: copilot
-  base_url: ""
+  base_url: https://api.githubcopilot.com
   api_mode: codex_responses
 providers: {}
 fallback_providers: []
@@ -162,7 +162,7 @@ auxiliary:
     provider: copilot
     model: gpt-4.1
     base_url: ''
-    api_key: ""
+    api_key: ''
     timeout: 120
     extra_body: {}
     download_timeout: 30
@@ -170,70 +170,70 @@ auxiliary:
     provider: auto
     model: ''
     base_url: ''
-    api_key: ""
+    api_key: ''
     timeout: 360
     extra_body: {}
   compression:
     provider: auto
     model: ''
     base_url: ''
-    api_key: ""
+    api_key: ''
     timeout: 120
     extra_body: {}
   skills_hub:
     provider: auto
     model: ''
     base_url: ''
-    api_key: ""
+    api_key: ''
     timeout: 30
     extra_body: {}
   approval:
     provider: auto
     model: ''
     base_url: ''
-    api_key: ""
+    api_key: ''
     timeout: 30
     extra_body: {}
   mcp:
     provider: auto
     model: ''
     base_url: ''
-    api_key: ""
+    api_key: ''
     timeout: 30
     extra_body: {}
   title_generation:
     provider: auto
     model: ''
     base_url: ''
-    api_key: ""
+    api_key: ''
     timeout: 30
     extra_body: {}
   triage_specifier:
     provider: auto
     model: ''
     base_url: ''
-    api_key: ""
+    api_key: ''
     timeout: 120
     extra_body: {}
   kanban_decomposer:
     provider: auto
     model: ''
     base_url: ''
-    api_key: ""
+    api_key: ''
     timeout: 180
     extra_body: {}
   profile_describer:
     provider: auto
     model: ''
     base_url: ''
-    api_key: ""
+    api_key: ''
     timeout: 60
     extra_body: {}
   curator:
     provider: auto
     model: ''
     base_url: ''
-    api_key: ""
+    api_key: ''
     timeout: 600
     extra_body: {}
 display:
@@ -339,7 +339,7 @@ delegation:
   model: ''
   provider: ''
   base_url: ''
-  api_key: ""
+  api_key: ''
   api_mode: ''
   inherit_mcp_toolsets: true
   max_iterations: 50

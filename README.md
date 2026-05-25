@@ -1,74 +1,91 @@
 # Hermes Agent Backup
 
-Setup backup for Hermes Agent on Arch Linux + Hyprland.
+This repository stores all critical configurations, memories, patched files, and integration drivers to completely restore the **Hermes Agent** on a new Arch Linux + Hyprland installation.
 
-## What's in here
+---
 
-- `config.yaml` — main Hermes config (model, gateway, memory, auxiliary providers)
-- `memories/` — MEMORY.md and USER.md (agent memory about Cap)
-- `skills/linux-computer-use/` — custom skill for desktop control via ydotool+grim
-- `approval-source.py` — patched approval.py (reboot/shutdown unblocked)
-- `approval-sitepackages.py` — patched approval.py for system Python site-packages
+## What's in Here
 
-## Setup Summary
+*   `config.yaml` — Main Hermes config (active model configurations, auxiliary providers, system bounds).
+*   `memories/` — Dynamic long-term files `MEMORY.md` and `USER.md` mapping the agent's memory.
+*   `hyprland_backend.py` — **[v2.0 Upgrade]** The native Linux computer-use driver implementing Wayland cropped screenshotting (`grim`), SOM overlays (`Pillow`), and pointer/key injections (`ydotool`).
+*   `tool.py.patch` — **[v2.0 Upgrade]** Staged patch to hook our new backend directly into `hermes-agent/tools/computer_use/tool.py`.
+*   `approval-source.py` — Patched approval file allowing reboot, poweroff, and shutdown triggers.
+*   `approval-sitepackages.py` — Patched approval file for the system Python site-packages layout.
+*   `hermes-gateway.service` — Systemd service definition to run the Telegram gateway as a daemon on login.
+*   `hyprland.conf.snippet` — Snippet to auto-start `ydotoold` and load the compositor plugin.
 
-### Model
-- Main: gpt-5.4-mini via GitHub Copilot (Student plan)
-- Vision auxiliary: gpt-4.1 via GitHub Copilot (0x, unlimited)
-- Other auxiliary: auto
+---
 
-### Telegram
-- Bot configured with Cap's Telegram user ID as allowlist and home channel
-- Gateway runs as systemd user service (auto-starts on login)
+## Setup & Restore on a New Linux Distro
 
-### Desktop Control
-- grim — screenshots (Wayland)
-- ydotool — mouse/keyboard control
-- ydotoold auto-starts via hyprland.conf exec-once
+Follow these simple steps to restore this exact pixel-perfect environment:
 
-### What was patched
-Reboot/shutdown commands are hardline blocked by default in Hermes.
-Two files needed patching to unblock them:
-- `~/.hermes/hermes-agent/tools/approval.py`
-- `~/.local/lib/python3.14/site-packages/tools/approval.py`
+### Step 1: Install System Dependencies
+Install core packages needed for Wayland automation:
+```bash
+sudo pacman -S ydotool grim slurp cmake nlohmann-json libdrm pixman
+```
 
-Lines commented out in HARDLINE_PATTERNS:
-- `(_CMDPOS + r'(shutdown|reboot|halt|poweroff)\b', ...)`
-- `(_CMDPOS + r'init\s+[06]\b', ...)`
-- `(_CMDPOS + r'systemctl\s+(poweroff|reboot|halt|kexec)\b', ...)`
-- `(_CMDPOS + r'telinit\s+[06]\b', ...)`
+### Step 2: Set Up the C++ Compositor Plugin
+Clone, compile, and load the compositor IPC socket plugin:
+```bash
+git clone https://github.com/xCaptaiN09/hermes-hyprland-plugin.git
+cd hermes-hyprland-plugin
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+hyprctl plugin load ./build/hermes-hyprland.so
+```
+*Add to `~/.config/hypr/hyprland.conf` to autostart at boot:*
+```ini
+exec-once = ydotoold
+plugin = /absolute/path/to/hermes-hyprland-plugin/build/hermes-hyprland.so
+```
 
-## Restore on New System
+### Step 3: Install & Sync the Hermes Agent
+1.  Run the standard Hermes Agent installer:
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+    ```
+2.  Copy your personal configurations and memories:
+    ```bash
+    cp config.yaml ~/.hermes/config.yaml
+    cp -r memories/ ~/.hermes/memories/
+    ```
 
-1. Install Hermes: `curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash`
-2. Copy config: `cp config.yaml ~/.hermes/config.yaml`
-3. Copy memories: `cp -r memories/ ~/.hermes/memories/`
-4. Copy skill: `cp -r skills/ ~/.hermes/skills/`
-5. Apply approval patch: `cp approval-source.py ~/.hermes/hermes-agent/tools/approval.py`
-6. Find site-packages path: `/usr/bin/python -c "import tools.approval; import inspect; print(inspect.getfile(tools.approval))"`
-7. Copy to that path and delete pyc cache
-8. Install ydotool: `sudo pacman -S ydotool`
-9. Add to hyprland: `echo "exec-once = ydotoold" >> ~/.config/hypr/hyprland.conf`
-10. Run: `hermes gateway restart`
+### Step 4: Apply the Coordinate Fusion Backend
+Copy our custom high-performance driver directly into the agent directory:
+```bash
+cp hyprland_backend.py ~/.hermes/hermes-agent/tools/computer_use/hyprland_backend.py
+```
 
-## Notes
-- Tirith security is re-enabled (tirith_enabled: true)
-- Approvals mode: manual (LLM decides, not hard block)
-- Only disk destruction commands remain hardline blocked
-- Gemini OAuth shared quota — don't set auxiliary providers to google-gemini-cli
+Apply the patch to hook it into the agent's main entry point:
+```bash
+cd ~/.hermes/hermes-agent
+patch -p1 < /path/to/hermes-backup/tool.py.patch
+```
 
-## Hyprland Plugin
+### Step 5: Apply Approval Patches (Unblocking reboot/shutdown)
+Overwrite the hardline block definitions:
+1.  **Agent Source**:
+    ```bash
+    cp /path/to/hermes-backup/approval-source.py ~/.hermes/hermes-agent/tools/approval.py
+    ```
+2.  **System Python Site-Packages**:
+    Locate your active python package location:
+    ```bash
+    python3 -c "import tools.approval; import inspect; print(inspect.getfile(tools.approval))"
+    ```
+    Overwrite that file with `approval-sitepackages.py` and clear its `__pycache__` folder.
 
-For compositor-level desktop control (more accurate than ydotool alone):
-https://github.com/xCaptaiN09/hermes-hyprland-plugin
+---
 
-Build and load:
-    git clone https://github.com/xCaptaiN09/hermes-hyprland-plugin
-    cd hermes-hyprland-plugin
-    sudo pacman -S nlohmann-json libdrm pixman cmake
-    cmake -B build -DCMAKE_BUILD_TYPE=Release
-    cmake --build build
-    hyprctl plugin load ./build/hermes-hyprland.so
+## Verifying the Restored Environment
 
-Add to hyprland.conf for auto-load:
-    plugin = /path/to/hermes-hyprland.so
+To verify that the entire pipeline is working on your new system, set the active backend environment variable and execute the test runner:
+```bash
+export HERMES_COMPUTER_USE_BACKEND=hyprland
+cd hermes-hyprland-plugin
+./test_integration.sh
+```
+*If all checks report `SUCCESS`, your agent is ready to operate with pixel-perfect precision on Wayland!*
