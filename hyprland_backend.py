@@ -232,6 +232,15 @@ class HyprlandBackend(ComputerUseBackend):
             if matched:
                 target_x, target_y = matched.center()
                 logger.info("Resolved element #%d target coordinate to X=%d, Y=%d", element, target_x, target_y)
+                
+                # Auto-focus the parent window to guarantee we switch workspace and focus before click
+                if matched.window_id:
+                    try:
+                        addr_hex = hex(int(matched.window_id))
+                        subprocess.run(["hyprctl", "dispatch", "focuswindow", f"address:{addr_hex}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        time.sleep(0.05)  # Let it settle
+                    except Exception as e:
+                        logger.error("Failed to auto-focus window address: %s", e)
             else:
                 return ActionResult(ok=False, action="click", message=f"Could not find cached element #{element}")
         elif x is not None and y is not None:
@@ -275,29 +284,39 @@ class HyprlandBackend(ComputerUseBackend):
         if None in (fx, fy, tx, ty):
             return ActionResult(ok=False, action="drag", message="Invalid source or destination coordinate boundaries.")
 
-        # Drag simulation via kernel-level pointer events
+        # Drag simulation via native compositor mouse events
         try:
+            btn_code = 272
+            if button == "right":
+                btn_code = 273
+            elif button == "middle":
+                btn_code = 274
+
             # 1. Warp cursor to source coordinates
             self.engine.warp_cursor(fx, fy)
             time.sleep(0.1)
             
-            # 2. Hold left mouse button down (BTN_LEFT keycode is 272)
-            subprocess.run(["ydotool", "key", "272:1"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # 2. Hold mouse button down natively
+            res = self.engine.client.send_command({"action": "native_press", "button": btn_code})
+            if not res.get("success"):
+                raise RuntimeError(f"Native press failed: {res.get('error')}")
             time.sleep(0.1)
             
             # 3. Warp cursor to destination coordinates
             self.engine.warp_cursor(tx, ty)
             time.sleep(0.1)
             
-            # 4. Release left mouse button (BTN_LEFT keycode is 272)
-            subprocess.run(["ydotool", "key", "272:0"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # 4. Release mouse button natively
+            res = self.engine.client.send_command({"action": "native_release", "button": btn_code})
+            if not res.get("success"):
+                raise RuntimeError(f"Native release failed: {res.get('error')}")
             time.sleep(0.1)
             
             return ActionResult(ok=True, action="drag", message=f"Dragged from ({fx},{fy}) to ({tx},{ty}).")
         except Exception as e:
-            # Ensure safety release of left button in case of failure
+            # Ensure safety release in case of failure
             try:
-                subprocess.run(["ydotool", "key", "272:0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                self.engine.client.send_command({"action": "native_release", "button": btn_code})
             except Exception:
                 pass
             return ActionResult(ok=False, action="drag", message=f"Drag dispatch failure: {str(e)}")
@@ -412,6 +431,25 @@ class HyprlandBackend(ComputerUseBackend):
         return apps
 
     def focus_app(self, app: str, raise_window: bool = False) -> ActionResult:
+        # Find window by class/title matching
+        windows = self.engine.get_windows()
+        target_win = None
+        app_lower = app.lower()
+        for w in windows:
+            if app_lower in w.get("class", "").lower() or app_lower in w.get("title", "").lower():
+                target_win = w
+                break
+        
+        if target_win:
+            try:
+                addr_hex = hex(int(target_win["address"]))
+                subprocess.run(["hyprctl", "dispatch", "focuswindow", f"address:{addr_hex}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                self._last_app = app
+                return ActionResult(ok=True, action="focus_app", message=f"Focused application {app} successfully.")
+            except Exception as e:
+                logger.error("Failed to focus window address: %s", e)
+        
+        # Fallback to C++ plugin internal focus
         res = self.engine.client.send_command({"action": "focus_window", "class": app})
         if res.get("success"):
             self._last_app = app
