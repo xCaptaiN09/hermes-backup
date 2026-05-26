@@ -263,12 +263,14 @@ def _find_atspi_element(app_class, element_name, role_hint=None):
     # Find matching AT-SPI application
     desktop = Atspi.get_desktop(0)
     atspi_app = None
+    win_title = target_win.get("title", "")
     for i in range(desktop.get_child_count()):
         child = desktop.get_child_at_index(i)
         if child:
-            child_name = child.get_name() or ""
-            if (win_class.lower() in child_name.lower() or
-                child_name.lower() in win_class.lower()):
+            child_name = (child.get_name() or "").lower()
+            if (win_class.lower() in child_name or
+                child_name in win_class.lower() or
+                (win_title and (win_title.lower() in child_name or child_name in win_title.lower()))):
                 atspi_app = child
                 break
 
@@ -558,12 +560,14 @@ def list_elements(app_class):
 
     desktop = Atspi.get_desktop(0)
     atspi_app = None
+    win_title = target_win.get("title", "")
     for i in range(desktop.get_child_count()):
         child = desktop.get_child_at_index(i)
         if child:
-            child_name = child.get_name() or ""
-            if (win_class.lower() in child_name.lower() or
-                child_name.lower() in win_class.lower()):
+            child_name = (child.get_name() or "").lower()
+            if (win_class.lower() in child_name or
+                child_name in win_class.lower() or
+                (win_title and (win_title.lower() in child_name or child_name in win_title.lower()))):
                 atspi_app = child
                 break
 
