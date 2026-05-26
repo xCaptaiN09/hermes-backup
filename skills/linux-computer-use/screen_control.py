@@ -173,7 +173,7 @@ def move_mouse_smooth(target_x, target_y):
 
 # ─── Click at Coordinates ────────────────────────────────────────────────────
 
-def click(x=None, y=None, button="left", window_index=None, windows=None):
+def click(x=None, y=None, button="left", click_count=1, window_index=None, windows=None):
     """Click at exact pixel coordinates using smooth mouse move + ydotool click.
 
     Strategy: Smooth ease-in-out cursor movement generates correct pointer motion
@@ -200,11 +200,18 @@ def click(x=None, y=None, button="left", window_index=None, windows=None):
     button_code = {"left": "0xC0", "right": "0xC8", "middle": "0xC4"}.get(
         button, "0xC0"
     )
-    result = subprocess.run(
-        ["ydotool", "click", button_code], capture_output=True, text=True
-    )
+    
+    success = True
+    for _ in range(click_count):
+        result = subprocess.run(
+            ["ydotool", "click", button_code], capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            success = False
+        time.sleep(0.05)  # Safe double-click / multi-click interval
+        
     time.sleep(0.15)
-    return result.returncode == 0
+    return success
 
 
 # ─── AT-SPI Element Discovery ────────────────────────────────────────────────
@@ -292,13 +299,18 @@ def _find_atspi_element(app_class, element_name, role_hint=None):
                 if role_hint and role_hint.lower() in node_role.lower():
                     score += 20
 
-                # Bonus for interactive roles (buttons, menu items, etc.)
+                # Bonus for interactive and main-pane roles (buttons, menu items, table cells, icons)
                 interactive_roles = {"push button", "toggle button", "menu item",
                                      "tool bar button", "link", "check box",
                                      "radio button", "combo box", "entry",
-                                     "page tab"}
+                                     "page tab", "table cell", "list item", "icon"}
                 if node_role.lower() in interactive_roles:
-                    score += 10
+                    score += 15
+
+                # Aggressive penalties for status/info bars to avoid misclicks in Thunar
+                penalized_roles = {"status bar", "info bar", "tool bar", "menu bar", "scroll bar"}
+                if node_role.lower() in penalized_roles:
+                    score -= 50
 
                 if score > best_score:
                     # Get bounds using WINDOW coords (type 1) then add compositor offset
@@ -337,7 +349,7 @@ def _find_atspi_element(app_class, element_name, role_hint=None):
     return best_match
 
 
-def click_element(app_class, element_name, button="left", role_hint=None):
+def click_element(app_class, element_name, button="left", click_count=1, role_hint=None):
     """Click a UI element by its accessible name. Resolution-independent.
 
     This searches the AT-SPI accessibility tree for an element matching
@@ -345,6 +357,7 @@ def click_element(app_class, element_name, button="left", role_hint=None):
     its center using compositor-native pixel-perfect coordinates.
 
     Works regardless of window size, position, or screen resolution.
+    Supports click_count (e.g. 2 for double click to open folders).
     """
     match = _find_atspi_element(app_class, element_name, role_hint)
     if not match:
@@ -353,7 +366,7 @@ def click_element(app_class, element_name, button="left", role_hint=None):
     # Click at the element's absolute center
     # Compositor warp positions cursor on target surface, ydotool delivers click
     # No need to focus_window — cursor position determines click target on Wayland
-    success = click(x=match["x"], y=match["y"], button=button)
+    success = click(x=match["x"], y=match["y"], button=button, click_count=click_count)
     return {
         "success": success,
         "element": match["name"],
@@ -448,24 +461,51 @@ def type_text(text):
 
 
 def key(keys):
-    """Press key combination. e.g. 'ctrl+c', 'return', 'escape'"""
-    key_map = {
-        "return": "28:1 28:0",
-        "escape": "1:1 1:0",
-        "tab": "15:1 15:0",
-        "space": "57:1 57:0",
-        "ctrl+c": "29:1 46:1 46:0 29:0",
-        "ctrl+v": "29:1 47:1 47:0 29:0",
-        "ctrl+z": "29:1 44:1 44:0 29:0",
-        "ctrl+s": "29:1 31:1 31:0 29:0",
-        "ctrl+a": "29:1 30:1 30:0 29:0",
-        "super": "125:1 125:0",
+    """Press key combination. Supports modifiers, e.g. 'alt+left', 'ctrl+shift+t', 'escape'"""
+    # Scan code map
+    scancodes = {
+        "ctrl": 29, "leftctrl": 29, "rightctrl": 97,
+        "alt": 56, "leftalt": 56, "rightalt": 100,
+        "shift": 42, "leftshift": 42, "rightshift": 54,
+        "super": 125, "meta": 125, "leftmeta": 125, "win": 125,
+        "escape": 1, "esc": 1,
+        "1": 2, "2": 3, "3": 4, "4": 5, "5": 6, "6": 7, "7": 8, "8": 9, "9": 10, "0": 11,
+        "backspace": 14,
+        "tab": 15,
+        "q": 16, "w": 17, "e": 18, "r": 19, "t": 20, "y": 21, "u": 22, "i": 23, "o": 24, "p": 25,
+        "enter": 28, "return": 28,
+        "a": 30, "s": 31, "d": 32, "f": 33, "g": 34, "h": 35, "j": 36, "k": 37, "l": 38,
+        "z": 44, "x": 45, "c": 46, "v": 47, "b": 48, "n": 49, "m": 50,
+        "space": 57,
+        "f1": 59, "f2": 60, "f3": 61, "f4": 62, "f5": 63, "f6": 64, "f7": 65, "f8": 66, "f9": 67, "f10": 68,
+        "home": 102, "up": 103, "pageup": 104, "left": 105, "right": 106, "end": 107, "down": 108, "pagedown": 109,
+        "insert": 110, "delete": 111,
+        "f11": 87, "f12": 88
     }
-    key_str = key_map.get(keys.lower(), "")
-    if not key_str:
+    
+    parts = [p.strip().lower() for p in keys.split("+") if p.strip()]
+    if not parts:
         return False
+        
+    codes = []
+    for p in parts:
+        if p in scancodes:
+            codes.append(scancodes[p])
+        else:
+            return False
+            
+    # Format ydotool key sequence:
+    # Key downs: e.g. "29:1 56:1 105:1"
+    # Key ups: e.g. "105:0 56:0 29:0" (in reverse order!)
+    key_str_parts = []
+    for c in codes:
+        key_str_parts.append(f"{c}:1")
+    for c in reversed(codes):
+        key_str_parts.append(f"{c}:0")
+        
     result = subprocess.run(
-        ["ydotool", "key"] + key_str.split(), capture_output=True, text=True
+        ["ydotool", "key"] + key_str_parts,
+        capture_output=True, text=True
     )
     return result.returncode == 0
 
@@ -540,18 +580,45 @@ def main():
         print(json.dumps(get_cursor_pos()))
 
     elif action == "click":
+        # Usage: click <x> <y> [button] [click_count]
         x, y = int(sys.argv[2]), int(sys.argv[3])
-        button = sys.argv[4] if len(sys.argv) > 4 else "left"
-        success = click(x=x, y=y, button=button)
-        print(json.dumps({"success": success, "x": x, "y": y}))
+        button = "left"
+        click_count = 1
+        if len(sys.argv) > 4:
+            if sys.argv[4].isdigit():
+                click_count = int(sys.argv[4])
+            else:
+                button = sys.argv[4]
+                if len(sys.argv) > 5 and sys.argv[5].isdigit():
+                    click_count = int(sys.argv[5])
+        success = click(x=x, y=y, button=button, click_count=click_count)
+        print(json.dumps({"success": success, "x": x, "y": y, "button": button, "click_count": click_count}))
 
     elif action == "click_element":
-        app_class = sys.argv[2]
-        element_name = " ".join(sys.argv[3:]) if len(sys.argv) > 3 else ""
-        if not element_name:
-            print(json.dumps({"error": "Usage: click_element <app_class> <element_name>"}))
+        # Usage: click_element <app_class> <element_name> [button] [click_count]
+        args = sys.argv[2:]
+        if len(args) < 2:
+            print(json.dumps({"error": "Usage: click_element <app_class> <element_name> [button] [click_count]"}))
             return
-        result = click_element(app_class, element_name)
+            
+        app_class = args[0]
+        remaining = args[1:]
+        
+        click_count = 1
+        button = "left"
+        
+        # Check if the last argument is a click count (integer)
+        if len(remaining) >= 2 and remaining[-1].isdigit():
+            click_count = int(remaining[-1])
+            remaining = remaining[:-1]
+            
+        # Check if the next last argument is a button name
+        if len(remaining) >= 2 and remaining[-1].lower() in {"left", "right", "middle"}:
+            button = remaining[-1].lower()
+            remaining = remaining[:-1]
+            
+        element_name = " ".join(remaining)
+        result = click_element(app_class, element_name, button=button, click_count=click_count)
         print(json.dumps(result, indent=2))
 
     elif action == "list_elements":

@@ -25,16 +25,21 @@ export HYPRLAND_INSTANCE_SIGNATURE="$(ls -1 /run/user/$UID/hypr | tail -n 1)"
 
 ## Clicking Buttons/Elements (PREFERRED METHOD)
 
-Use `click_element` to click any button, menu, or UI element BY NAME.
+Use `click_element` to click any button, menu, UI element, folder, or file BY NAME.
 This is resolution-independent and works regardless of window size or position.
+Supports multi-click (e.g. 2 for double click to open folders/files).
 
 ```bash
 # Click element by name — ALWAYS prefer this over coordinate clicking
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element thunar Home
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element thunar Desktop
-python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element thunar Documents
+
+# Double-click a folder/file to open it in Thunar (highly reliable)
+python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element thunar LocalSend left 2
+python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element thunar "bootimg-tools" left 2
+
+# Click a tab or browser button
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element zen "New Tab"
-python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element zen Back
 ```
 
 ## Discovering Available Elements
@@ -66,8 +71,12 @@ python3 ~/.hermes/skills/linux-computer-use/screen_control.py cursor
 
 ### Click at Exact Coordinates (only when click_element won't work)
 ```bash
+# Single click at X Y coordinates
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py click 960 540
+# Right click at coordinates
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py click 960 540 right
+# Double click at coordinates
+python3 ~/.hermes/skills/linux-computer-use/screen_control.py click 960 540 left 2
 ```
 
 ### Move Mouse
@@ -82,11 +91,13 @@ python3 ~/.hermes/skills/linux-computer-use/screen_control.py type "hello world"
 
 ### Key Shortcuts
 ```bash
+# Supports full modifier chaining (ctrl, alt, shift, super/meta) and directional keys
+python3 ~/.hermes/skills/linux-computer-use/screen_control.py key alt+left
+python3 ~/.hermes/skills/linux-computer-use/screen_control.py key alt+right
+python3 ~/.hermes/skills/linux-computer-use/screen_control.py key ctrl+shift+t
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py key return
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py key escape
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py key ctrl+c
-python3 ~/.hermes/skills/linux-computer-use/screen_control.py key ctrl+v
-python3 ~/.hermes/skills/linux-computer-use/screen_control.py key ctrl+s
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py key super
 ```
 
@@ -102,6 +113,9 @@ python3 ~/.hermes/skills/linux-computer-use/screen_control.py focus thunar
 3. **Click by name**: `click_element <app_class> <element_name>` (ALWAYS prefer this)
 4. **Verify**: capture screen and check result
 5. **Retry if needed**
+6. **After directory navigation, re-run `list_elements` or capture** to confirm the current folder title and the visible items match the intended destination.
+7. **For file managers, prefer main-pane items or exact path entry** when accessible names are ambiguous; verify the folder title after every hop.
+8. **For image/file opening tests, verify the actual target content opened, not just the click success.**
 
 ## IMPORTANT RULES
 
@@ -110,6 +124,14 @@ python3 ~/.hermes/skills/linux-computer-use/screen_control.py focus thunar
 3. **NEVER use ydotool directly** — screen_control.py handles input via compositor socket
 4. Only use coordinate `click X Y` as a last resort when the element has no accessible name
 5. Use `list_elements` first if you're unsure what the element is called
+6. If the requested folder/item name is not visible, verify the current directory title and visible entries before assuming the target exists; use search only after that check.
+7. In Thunar specifically, `click_element` can resolve to the search toggle or status row instead of the folder item. If that happens, use `Ctrl+L` and type the exact path rather than hunting by name.
+8. Do not trust a click result alone for file operations; confirm by title change or refreshed `list_elements`.
+9. For images, the browser/file-URI path may be enough for verification, but native desktop-launch support still needs explicit coverage if that is part of the test.
+
+
+## Requirements
+
 
 ## Requirements
 - grimblast (AUR) - screenshot with cursor visible
