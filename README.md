@@ -1,9 +1,9 @@
-# Hermes Agent Backup
+# Hermes Hyprland Setup
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform: Arch Linux](https://img.shields.io/badge/platform-Arch%20Linux-blue.svg)](https://archlinux.org/)
 [![Engine: Hermes Agent](https://img.shields.io/badge/engine-Hermes%20Agent-purple.svg)](https://github.com/NousResearch/hermes-agent)
-[![Setup: Compile--Free](https://img.shields.io/badge/setup-Compile--Free-success)](https://github.com/xCaptaiN09/hermes-backup)
+[![Setup: Compile--Free](https://img.shields.io/badge/setup-Compile--Free-success)](https://github.com/xCaptaiN09/hermes-hyprland-setup)
 
 > [!WARNING]
 > **Experimental & Under Active Development**
@@ -71,14 +71,14 @@ cp hyprland_backend.py ~/.hermes/hermes-agent/tools/computer_use/hyprland_backen
 Apply the patch to hook it into the agent's main entry point:
 ```bash
 cd ~/.hermes/hermes-agent
-patch -p1 < /path/to/hermes-backup/tool.py.patch
+patch -p1 < /path/to/hermes-hyprland-setup/tool.py.patch
 ```
 
 ### Step 5: Apply Approval Patches (Unblocking reboot/shutdown)
 Overwrite the hardline block definitions:
 1.  **Agent Source**:
     ```bash
-    cp /path/to/hermes-backup/approval-source.py ~/.hermes/hermes-agent/tools/approval.py
+    cp /path/to/hermes-hyprland-setup/approval-source.py ~/.hermes/hermes-agent/tools/approval.py
     ```
 2.  **System Python Site-Packages**:
     Locate your active python package location:
