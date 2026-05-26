@@ -376,6 +376,19 @@ def click_element(app_class, element_name, button="left", click_count=1, role_hi
     }
 
 
+def double_click(x=None, y=None, button="left", window_index=None, windows=None):
+    """Double-click at exact pixel coordinates."""
+    return click(x=x, y=y, button=button, click_count=2, window_index=window_index, windows=windows)
+
+
+def double_click_element(app_class, element_name, role_hint=None):
+    """Double-click a UI element by its accessible name.
+    
+    Excellent for opening folders/files in file managers like Thunar.
+    """
+    return click_element(app_class, element_name, button="left", click_count=2, role_hint=role_hint)
+
+
 def list_elements(app_class):
     """List all accessible UI elements in a window. Useful for discovering element names."""
     try:
@@ -619,6 +632,25 @@ def main():
             
         element_name = " ".join(remaining)
         result = click_element(app_class, element_name, button=button, click_count=click_count)
+        print(json.dumps(result, indent=2))
+
+    elif action == "double_click":
+        # Usage: double_click <x> <y> [button]
+        x, y = int(sys.argv[2]), int(sys.argv[3])
+        button = sys.argv[4] if len(sys.argv) > 4 else "left"
+        success = double_click(x=x, y=y, button=button)
+        print(json.dumps({"success": success, "x": x, "y": y, "button": button}))
+
+    elif action == "double_click_element":
+        # Usage: double_click_element <app_class> <element_name>
+        args = sys.argv[2:]
+        if len(args) < 2:
+            print(json.dumps({"error": "Usage: double_click_element <app_class> <element_name>"}))
+            return
+            
+        app_class = args[0]
+        element_name = " ".join(args[1:])
+        result = double_click_element(app_class, element_name)
         print(json.dumps(result, indent=2))
 
     elif action == "list_elements":

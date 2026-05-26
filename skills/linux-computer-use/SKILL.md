@@ -25,21 +25,18 @@ export HYPRLAND_INSTANCE_SIGNATURE="$(ls -1 /run/user/$UID/hypr | tail -n 1)"
 
 ## Clicking Buttons/Elements (PREFERRED METHOD)
 
-Use `click_element` to click any button, menu, UI element, folder, or file BY NAME.
+Use `click_element` (for single clicks) or `double_click_element` (for double clicks) to interact with UI elements, folders, or files BY NAME.
 This is resolution-independent and works regardless of window size or position.
-Supports multi-click (e.g. 2 for double click to open folders/files).
 
 ```bash
-# Click element by name — ALWAYS prefer this over coordinate clicking
+# Click a button or tab by name
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element thunar Home
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element thunar Desktop
-
-# Double-click a folder/file to open it in Thunar (highly reliable)
-python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element thunar LocalSend left 2
-python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element thunar "bootimg-tools" left 2
-
-# Click a tab or browser button
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element zen "New Tab"
+
+# Double-click a folder or file to open it in Thunar (EXPLICIT DIRECT METHOD)
+python3 ~/.hermes/skills/linux-computer-use/screen_control.py double_click_element thunar LocalSend
+python3 ~/.hermes/skills/linux-computer-use/screen_control.py double_click_element thunar "bootimg-tools"
 ```
 
 ## Discovering Available Elements
