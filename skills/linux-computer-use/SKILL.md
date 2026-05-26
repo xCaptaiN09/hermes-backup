@@ -113,12 +113,20 @@ python3 ~/.hermes/skills/linux-computer-use/screen_control.py focus thunar
 4. **Verify**: capture screen and check result
 5. **Retry if needed**
 6. **After directory navigation, re-run `list_elements` or capture** to confirm the current folder title and the visible items match the intended destination.
-7. **For file managers, prefer main-pane items or exact path entry** when accessible names are ambiguous; verify the folder title after every hop.
-8. **Do not guess folder positions from screenshots** when Thunar has an accessible-path alternative. If the item name is visible but `click_element` misfires, use `Ctrl+L` and type the exact path.
-9. **For image/file opening tests, verify the actual target content opened, not just the click success.**
-10. **Do not rely on search results for folder-opening tests** if the goal is to validate direct navigation.
-11. **If a direct double-click misresolves in Thunar, fall back to exact path entry first**; only use coordinate double-clicks if there is no reliable path-based route.
-12. **Back navigation should be verified** after use. If `Alt+Left` does not change the title/path as expected, use the visible `Back` button instead.
+7. **Do not announce success from a click alone.** In Thunar, trust the window title/path change (`<folder> - Thunar`) as the confirmation signal; if the user says it did not open, capture again before replying.
+8. **For file managers, prefer main-pane items or exact path entry** when accessible names are ambiguous; verify the folder title after every hop.
+9. **Do not guess folder positions from screenshots** when Thunar has an accessible-path alternative. If the item name is visible but `click_element` misfires, use `Ctrl+L` and type the exact path.
+10. **For image/file opening tests, verify the actual target content opened, not just the click success.**
+11. **Do not rely on search results for folder-opening tests** if the goal is to validate direct navigation.
+12. **If a direct double-click misresolves in Thunar, fall back to exact path entry first**; only use coordinate double-clicks if there is no reliable path-based route.
+13. **Back navigation should be verified** after use. If `Alt+Left` does not change the title/path as expected, use the visible `Back` button instead.
+14. **Thunar Search-Based Navigation Workflow**: If asked to open a folder/file via Thunar search, you MUST strictly follow this sequence:
+    - **Focus Thunar**: `focus thunar`
+    - **Open Search**: `click_element thunar "Search for Files..."`
+    - **Type the query**: Wait 200ms, then use the `type` action to type the exact name (e.g. `type "LocalSend"`).
+    - **Wait for results**: Wait 400ms for Thunar to populate search results.
+    - **Open target**: Use `list_elements thunar` to locate the target item in the search results, and then `double_click_element thunar <foldername>` (or select it and send `key return`) to open it.
+    - **Verify open state**: Run `list_elements thunar` or `capture thunar` and check that the window title/frame matches the target name (e.g., `LocalSend - Thunar`). **NEVER announce that a folder was successfully opened unless you have explicitly verified that the window title changed to that folder name!**
 
 See `references/thunar-navigation-notes.md` for Thunar-specific failure modes and recovery patterns.
 
@@ -134,6 +142,7 @@ See `references/thunar-navigation-notes.md` for Thunar-specific failure modes an
 8. Do not trust a click result alone for file operations; confirm by title change or refreshed `list_elements`.
 9. For images, the browser/file-URI path may be enough for verification, but native desktop-launch support still needs explicit coverage if that is part of the test.
 10. `double_click_element` is expected to be available in the script; if it is missing, update `screen_control.py` first rather than documenting unsupported usage.
+11. **NEVER announce success from a search click alone**. Clicking search merely activates the input box. You must type the target name, wait for the result list to render, double-click/open the result, and verify that the window title/path changed to the target folder before replying.
 
 
 ## Requirements
