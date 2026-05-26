@@ -350,6 +350,95 @@ def _find_atspi_element(app_class, element_name, role_hint=None):
 
     search_tree(atspi_app)
     return best_match
+def _get_thunar_view_mode(atspi_app):
+    """Find the directory pane in Thunar and return its view mode name, or None."""
+    def find_pane(node, depth=0):
+        if not node or depth > 20:
+            return None
+        try:
+            role = (node.get_role_name() or "").strip().lower()
+            if role == "directory pane":
+                return (node.get_name() or "").strip()
+            for i in range(node.get_child_count()):
+                res = find_pane(node.get_child_at_index(i), depth + 1)
+                if res:
+                    return res
+        except Exception:
+            pass
+        return None
+    return find_pane(atspi_app)
+
+
+def _ensure_details_view(app_class):
+    """If app is Thunar, check its view mode. If not Details view, focus, switch to Details, 
+    and return the original view mode shortcut so it can be restored.
+    """
+    if not app_class or "thunar" not in app_class.lower():
+        return None
+        
+    try:
+        import gi
+        gi.require_version('Atspi', '2.0')
+        from gi.repository import Atspi
+    except Exception:
+        return None
+        
+    windows = get_windows()
+    target_win = None
+    for w in windows:
+        if "thunar" in w.get("class", "").lower() or "thunar" in w.get("title", "").lower():
+            target_win = w
+            break
+            
+    if not target_win:
+        return None
+        
+    win_class = target_win.get("class", "")
+    
+    # Check current view mode via AT-SPI
+    desktop = Atspi.get_desktop(0)
+    atspi_app = None
+    for i in range(desktop.get_child_count()):
+        child = desktop.get_child_at_index(i)
+        if child:
+            child_name = child.get_name() or ""
+            if win_class.lower() in child_name.lower() or child_name.lower() in win_class.lower():
+                atspi_app = child
+                break
+                
+    if not atspi_app:
+        return None
+        
+    view_mode = _get_thunar_view_mode(atspi_app)
+    if not view_mode:
+        return None
+        
+    if "details" in view_mode.lower():
+        return None  # Already in Details view
+        
+    original_shortcut = None
+    if "icon" in view_mode.lower():
+        original_shortcut = "ctrl+1"
+    elif "compact" in view_mode.lower():
+        original_shortcut = "ctrl+3"
+        
+    if original_shortcut:
+        # Switch to Details view (ctrl+2)
+        focus_window(class_name=win_class)
+        time.sleep(0.1)
+        key("ctrl+2")
+        time.sleep(0.2)  # Wait for tree to rebuild
+        
+    return original_shortcut
+
+
+def _restore_thunar_view(app_class, original_shortcut):
+    if not app_class or "thunar" not in app_class.lower() or not original_shortcut:
+        return
+    focus_window(class_name="thunar")
+    time.sleep(0.1)
+    key(original_shortcut)
+    time.sleep(0.15)  # Wait for view to switch back
 
 
 def click_element(app_class, element_name, button="left", click_count=1, role_hint=None):
@@ -362,14 +451,20 @@ def click_element(app_class, element_name, button="left", click_count=1, role_hi
     Works regardless of window size, position, or screen resolution.
     Supports click_count (e.g. 2 for double click to open folders).
     """
+    original_shortcut = _ensure_details_view(app_class)
+    
     match = _find_atspi_element(app_class, element_name, role_hint)
     if not match:
+        _restore_thunar_view(app_class, original_shortcut)
         return {"success": False, "error": f"Element '{element_name}' not found in '{app_class}'"}
 
     # Click at the element's absolute center
     # Compositor warp positions cursor on target surface, ydotool delivers click
     # No need to focus_window — cursor position determines click target on Wayland
     success = click(x=match["x"], y=match["y"], button=button, click_count=click_count)
+    
+    _restore_thunar_view(app_class, original_shortcut)
+    
     return {
         "success": success,
         "element": match["name"],
@@ -377,6 +472,7 @@ def click_element(app_class, element_name, button="left", click_count=1, role_hi
         "clicked_at": {"x": match["x"], "y": match["y"]},
         "bounds": match["bounds"]
     }
+
 
 
 def double_click(x=None, y=None, button="left", window_index=None, windows=None):
@@ -394,11 +490,14 @@ def double_click_element(app_class, element_name, role_hint=None):
 
 def list_elements(app_class):
     """List all accessible UI elements in a window. Useful for discovering element names."""
+    original_shortcut = _ensure_details_view(app_class)
+    
     try:
         import gi
         gi.require_version('Atspi', '2.0')
         from gi.repository import Atspi
     except Exception:
+        _restore_thunar_view(app_class, original_shortcut)
         return {"success": False, "error": "AT-SPI not available"}
 
     windows = get_windows()
@@ -417,6 +516,7 @@ def list_elements(app_class):
     if not target_win and windows:
         target_win = windows[0]
     if not target_win:
+        _restore_thunar_view(app_class, original_shortcut)
         return {"success": False, "error": "No windows found"}
 
     win_class = target_win.get("class", "")
@@ -435,6 +535,7 @@ def list_elements(app_class):
                 break
 
     if not atspi_app:
+        _restore_thunar_view(app_class, original_shortcut)
         return {"success": False, "error": f"No AT-SPI app matches '{app_class}'"}
 
     elements = []
@@ -463,6 +564,9 @@ def list_elements(app_class):
             pass
 
     collect(atspi_app)
+    
+    _restore_thunar_view(app_class, original_shortcut)
+    
     return {"success": True, "app": win_class, "elements": elements, "count": len(elements)}
 
 

@@ -25,8 +25,9 @@ export HYPRLAND_INSTANCE_SIGNATURE="$(ls -1 /run/user/$UID/hypr | tail -n 1)"
 
 ## Clicking Buttons/Elements (PREFERRED METHOD)
 
-Use `click_element` (for single clicks) or `double_click_element` (for double clicks) to interact with UI elements, folders, or files BY NAME.
-This is resolution-independent and works regardless of window size or position.
+Use `click_element` to interact with buttons, menus, and named UI controls.
+In Thunar, prefer `double_click_element` for folders/files *only if the name is clearly visible in the main pane*.
+If a folder name is ambiguous or not visible, use `Ctrl+L` and type the exact path instead of searching by name.
 
 ```bash
 # Click a button or tab by name
@@ -34,11 +35,12 @@ python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element thun
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element thunar Desktop
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py click_element zen "New Tab"
 
-# Double-click a folder or file to open it in Thunar (EXPLICIT DIRECT METHOD)
+# Double-click a folder or file to open it in Thunar when the item is clearly visible
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py double_click_element thunar LocalSend
 python3 ~/.hermes/skills/linux-computer-use/screen_control.py double_click_element thunar "bootimg-tools"
 ```
 
+If `double_click_element` resolves the wrong control in Thunar, fall back to `Ctrl+L` + exact path entry and verify the frame title after navigation.
 ## Discovering Available Elements
 
 Before clicking, list what elements are available in an app:
@@ -112,7 +114,13 @@ python3 ~/.hermes/skills/linux-computer-use/screen_control.py focus thunar
 5. **Retry if needed**
 6. **After directory navigation, re-run `list_elements` or capture** to confirm the current folder title and the visible items match the intended destination.
 7. **For file managers, prefer main-pane items or exact path entry** when accessible names are ambiguous; verify the folder title after every hop.
-8. **For image/file opening tests, verify the actual target content opened, not just the click success.**
+8. **Do not guess folder positions from screenshots** when Thunar has an accessible-path alternative. If the item name is visible but `click_element` misfires, use `Ctrl+L` and type the exact path.
+9. **For image/file opening tests, verify the actual target content opened, not just the click success.**
+10. **Do not rely on search results for folder-opening tests** if the goal is to validate direct navigation.
+11. **If a direct double-click misresolves in Thunar, fall back to exact path entry first**; only use coordinate double-clicks if there is no reliable path-based route.
+12. **Back navigation should be verified** after use. If `Alt+Left` does not change the title/path as expected, use the visible `Back` button instead.
+
+See `references/thunar-navigation-notes.md` for Thunar-specific failure modes and recovery patterns.
 
 ## IMPORTANT RULES
 
@@ -125,6 +133,7 @@ python3 ~/.hermes/skills/linux-computer-use/screen_control.py focus thunar
 7. In Thunar specifically, `click_element` can resolve to the search toggle or status row instead of the folder item. If that happens, use `Ctrl+L` and type the exact path rather than hunting by name.
 8. Do not trust a click result alone for file operations; confirm by title change or refreshed `list_elements`.
 9. For images, the browser/file-URI path may be enough for verification, but native desktop-launch support still needs explicit coverage if that is part of the test.
+10. `double_click_element` is expected to be available in the script; if it is missing, update `screen_control.py` first rather than documenting unsupported usage.
 
 
 ## Requirements
