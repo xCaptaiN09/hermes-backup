@@ -234,10 +234,17 @@ def _find_atspi_element(app_class, element_name, role_hint=None):
     target_win = None
     if app_class:
         app_lower = app_class.lower()
+        # First try to find a focused matching window
         for w in windows:
-            if app_lower in w.get("class", "").lower() or app_lower in w.get("title", "").lower():
+            if w.get("focused") and (app_lower in w.get("class", "").lower() or app_lower in w.get("title", "").lower()):
                 target_win = w
                 break
+        # Fallback to first matching window
+        if not target_win:
+            for w in windows:
+                if app_lower in w.get("class", "").lower() or app_lower in w.get("title", "").lower():
+                    target_win = w
+                    break
     if not target_win:
         # Use focused window
         for w in windows:
@@ -504,10 +511,17 @@ def list_elements(app_class):
     target_win = None
     if app_class:
         app_lower = app_class.lower()
+        # First try to find a focused matching window
         for w in windows:
-            if app_lower in w.get("class", "").lower() or app_lower in w.get("title", "").lower():
+            if w.get("focused") and (app_lower in w.get("class", "").lower() or app_lower in w.get("title", "").lower()):
                 target_win = w
                 break
+        # Fallback to first matching window
+        if not target_win:
+            for w in windows:
+                if app_lower in w.get("class", "").lower() or app_lower in w.get("title", "").lower():
+                    target_win = w
+                    break
     if not target_win:
         for w in windows:
             if w.get("focused"):
