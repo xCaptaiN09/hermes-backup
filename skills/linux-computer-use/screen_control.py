@@ -275,6 +275,25 @@ def _find_atspi_element(app_class, element_name, role_hint=None):
     if not atspi_app:
         return None
 
+    # Find the specific window frame that matches target_win's title
+    win_title = target_win.get("title", "")
+    target_frame = None
+    if win_title:
+        child_count = atspi_app.get_child_count()
+        for i in range(child_count):
+            child = atspi_app.get_child_at_index(i)
+            if child:
+                role = (child.get_role_name() or "").strip().lower()
+                if role == "frame":
+                    frame_name = (child.get_name() or "").strip()
+                    if (win_title.lower() in frame_name.lower() or 
+                        frame_name.lower() in win_title.lower()):
+                        target_frame = child
+                        break
+                        
+    if not target_frame:
+        target_frame = atspi_app
+
     # Recursive search for element by name
     name_lower = element_name.lower()
     best_match = None
@@ -355,7 +374,7 @@ def _find_atspi_element(app_class, element_name, role_hint=None):
         except Exception:
             pass
 
-    search_tree(atspi_app)
+    search_tree(target_frame)
     return best_match
 def _get_thunar_view_mode(atspi_app):
     """Find the directory pane in Thunar and return its view mode name, or None."""
@@ -552,6 +571,25 @@ def list_elements(app_class):
         _restore_thunar_view(app_class, original_shortcut)
         return {"success": False, "error": f"No AT-SPI app matches '{app_class}'"}
 
+    # Find the specific window frame that matches target_win's title
+    win_title = target_win.get("title", "")
+    target_frame = None
+    if win_title:
+        child_count = atspi_app.get_child_count()
+        for i in range(child_count):
+            child = atspi_app.get_child_at_index(i)
+            if child:
+                role = (child.get_role_name() or "").strip().lower()
+                if role == "frame":
+                    frame_name = (child.get_name() or "").strip()
+                    if (win_title.lower() in frame_name.lower() or 
+                        frame_name.lower() in win_title.lower()):
+                        target_frame = child
+                        break
+                        
+    if not target_frame:
+        target_frame = atspi_app
+
     elements = []
 
     def collect(node, depth=0):
@@ -577,7 +615,7 @@ def list_elements(app_class):
         except Exception:
             pass
 
-    collect(atspi_app)
+    collect(target_frame)
     
     _restore_thunar_view(app_class, original_shortcut)
     
