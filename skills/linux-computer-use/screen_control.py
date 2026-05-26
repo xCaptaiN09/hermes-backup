@@ -275,7 +275,7 @@ def _find_atspi_element(app_class, element_name, role_hint=None):
 
     def search_tree(node, depth=0):
         nonlocal best_match, best_score
-        if depth > 15:  # Prevent infinite recursion
+        if depth > 20:  # Deep enough to reach Thunar's detailed list view items (depth 12)
             return
         try:
             node_name = (node.get_name() or "").strip()
@@ -295,46 +295,49 @@ def _find_atspi_element(app_class, element_name, role_hint=None):
                 elif name_lower in name_l or name_l in name_lower:
                     score = 60
 
-                # Bonus for matching role hint
-                if role_hint and role_hint.lower() in node_role.lower():
-                    score += 20
+                # CRITICAL: Only apply interactive bonuses/penalties and consider a match
+                # if there is a non-zero base name match. This avoids false matches on unrelated elements.
+                if score > 0:
+                    # Bonus for matching role hint
+                    if role_hint and role_hint.lower() in node_role.lower():
+                        score += 20
 
-                # Bonus for interactive and main-pane roles (buttons, menu items, table cells, icons)
-                interactive_roles = {"push button", "toggle button", "menu item",
-                                     "tool bar button", "link", "check box",
-                                     "radio button", "combo box", "entry",
-                                     "page tab", "table cell", "list item", "icon"}
-                if node_role.lower() in interactive_roles:
-                    score += 15
+                    # Bonus for interactive and main-pane roles (buttons, menu items, table cells, icons)
+                    interactive_roles = {"push button", "toggle button", "menu item",
+                                         "tool bar button", "link", "check box",
+                                         "radio button", "combo box", "entry",
+                                         "page tab", "table cell", "list item", "icon"}
+                    if node_role.lower() in interactive_roles:
+                        score += 15
 
-                # Aggressive penalties for status/info bars to avoid misclicks in Thunar
-                penalized_roles = {"status bar", "info bar", "tool bar", "menu bar", "scroll bar"}
-                if node_role.lower() in penalized_roles:
-                    score -= 50
+                    # Aggressive penalties for status/info bars to avoid misclicks in Thunar
+                    penalized_roles = {"status bar", "info bar", "tool bar", "menu bar", "scroll bar"}
+                    if node_role.lower() in penalized_roles:
+                        score -= 50
 
-                if score > best_score:
-                    # Get bounds using WINDOW coords (type 1) then add compositor offset
-                    # On Wayland, SCREEN coords (type 0) are unreliable because apps
-                    # don't know their absolute screen position. So we use WINDOW-relative
-                    # coords and add the compositor's window x,y for true screen position.
-                    try:
-                        rect = node.get_extents(1)  # 1 = WINDOW-relative coords
-                        if rect.width > 0 and rect.height > 0 and rect.x > -10000 and rect.y > -10000:
-                            abs_x = win_x + rect.x
-                            abs_y = win_y + rect.y
-                            best_score = score
-                            best_match = {
-                                "name": node_name,
-                                "role": node_role,
-                                "x": abs_x + rect.width // 2,
-                                "y": abs_y + rect.height // 2,
-                                "bounds": {
-                                    "x": abs_x, "y": abs_y,
-                                    "width": rect.width, "height": rect.height
+                    if score > best_score:
+                        # Get bounds using WINDOW coords (type 1) then add compositor offset
+                        # On Wayland, SCREEN coords (type 0) are unreliable because apps
+                        # don't know their absolute screen position. So we use WINDOW-relative
+                        # coords and add the compositor's window x,y for true screen position.
+                        try:
+                            rect = node.get_extents(1)  # 1 = WINDOW-relative coords
+                            if rect.width > 0 and rect.height > 0 and rect.x > -10000 and rect.y > -10000:
+                                abs_x = win_x + rect.x
+                                abs_y = win_y + rect.y
+                                best_score = score
+                                best_match = {
+                                    "name": node_name,
+                                    "role": node_role,
+                                    "x": abs_x + rect.width // 2,
+                                    "y": abs_y + rect.height // 2,
+                                    "bounds": {
+                                        "x": abs_x, "y": abs_y,
+                                        "width": rect.width, "height": rect.height
+                                    }
                                 }
-                            }
-                    except Exception:
-                        pass
+                        except Exception:
+                            pass
 
             # Recurse into children
             child_count = node.get_child_count()
@@ -437,7 +440,7 @@ def list_elements(app_class):
     elements = []
 
     def collect(node, depth=0):
-        if depth > 10 or len(elements) >= 100:
+        if depth > 20 or len(elements) >= 250:  # Increase depth to fully scan Thunar list view
             return
         try:
             name = (node.get_name() or "").strip()
