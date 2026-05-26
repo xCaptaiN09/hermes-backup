@@ -122,10 +122,55 @@ def move_mouse(x, y):
     return result.returncode == 0
 
 
+def move_mouse_smooth(target_x, target_y):
+    """Move mouse smoothly to absolute coordinates with ease-in-out velocity profile.
+
+    Generates natural Wayland motion events to guarantee hover states register
+    correctly on sub-surfaces and toolbar elements.
+    """
+    start = get_cursor_pos()
+    if not start:
+        return move_mouse(target_x, target_y)
+
+    start_x, start_y = start["x"], start["y"]
+    dx = target_x - start_x
+    dy = target_y - start_y
+    distance = (dx**2 + dy**2)**0.5
+
+    if distance < 15:
+        return move_mouse(target_x, target_y)
+
+    # 1 step per 30px, minimum 5 steps, maximum 20 steps
+    steps = max(5, min(20, int(distance / 30)))
+    step_delay = 0.005  # 5ms delay per step (extremely fast but smooth)
+
+    for i in range(1, steps + 1):
+        t = i / steps
+        # Quadratic ease-in-out interpolation
+        if t < 0.5:
+            factor = 2 * t * t
+        else:
+            factor = -1 + (4 - 2 * t) * t
+
+        x = int(start_x + dx * factor)
+        y = int(start_y + dy * factor)
+
+        move_mouse(x, y)
+        time.sleep(step_delay)
+
+    # Ensure final warp reaches absolute destination
+    return move_mouse(target_x, target_y)
+
+
 # ─── Click at Coordinates ────────────────────────────────────────────────────
 
 def click(x=None, y=None, button="left", window_index=None, windows=None):
-    """Click at exact pixel coordinates using compositor warp + native click."""
+    """Click at exact pixel coordinates using smooth mouse move + ydotool click.
+
+    Strategy: Smooth ease-in-out cursor movement generates correct pointer motion
+    events so toolkits (GTK, Qt) properly register mouse enter/hover states,
+    then ydotool click goes through kernel input layer to execute the click.
+    """
     if window_index and windows:
         win = next((w for w in windows if w["index"] == window_index), None)
         if win:
@@ -134,40 +179,22 @@ def click(x=None, y=None, button="left", window_index=None, windows=None):
     if x is None or y is None:
         return False
 
-    # Save original cursor position
-    orig_x, orig_y = None, None
-    cursor_res = send_socket_command({"action": "get_cursor"})
-    if cursor_res.get("success") and "cursor" in cursor_res:
-        orig_x = cursor_res["cursor"]["x"]
-        orig_y = cursor_res["cursor"]["y"]
-
-    # 1. Warp to target
-    moved = move_mouse(x, y)
+    # 1. Move cursor smoothly to target position
+    moved = move_mouse_smooth(x, y)
     if not moved:
         return False
 
-    time.sleep(0.05)
+    # Wait for compositor/client to process hover transition
+    time.sleep(0.15)
 
-    # 2. Native click via compositor socket
-    btn_code = {"left": 272, "right": 273, "middle": 274}.get(button, 272)
-    click_res = send_socket_command({"action": "native_click", "button": btn_code})
-
-    if click_res.get("success"):
-        time.sleep(0.05)
-        if orig_x is not None and orig_y is not None:
-            send_socket_command({"action": "move_cursor", "x": orig_x, "y": orig_y})
-        return True
-
-    # Fallback to ydotool click
+    # 2. Click via ydotool (kernel input layer — properly received by GTK/Qt)
     button_code = {"left": "0xC0", "right": "0xC8", "middle": "0xC4"}.get(
         button, "0xC0"
     )
     result = subprocess.run(
         ["ydotool", "click", button_code], capture_output=True, text=True
     )
-    time.sleep(0.05)
-    if orig_x is not None and orig_y is not None:
-        send_socket_command({"action": "move_cursor", "x": orig_x, "y": orig_y})
+    time.sleep(0.15)
     return result.returncode == 0
 
 
@@ -265,18 +292,23 @@ def _find_atspi_element(app_class, element_name, role_hint=None):
                     score += 10
 
                 if score > best_score:
-                    # Get bounds - use SCREEN coords (CoordType 0) for absolute position
+                    # Get bounds using WINDOW coords (type 1) then add compositor offset
+                    # On Wayland, SCREEN coords (type 0) are unreliable because apps
+                    # don't know their absolute screen position. So we use WINDOW-relative
+                    # coords and add the compositor's window x,y for true screen position.
                     try:
-                        rect = node.get_extents(0)  # 0 = SCREEN coords
-                        if rect.width > 0 and rect.height > 0:
+                        rect = node.get_extents(1)  # 1 = WINDOW-relative coords
+                        if rect.width > 0 and rect.height > 0 and rect.x > -10000 and rect.y > -10000:
+                            abs_x = win_x + rect.x
+                            abs_y = win_y + rect.y
                             best_score = score
                             best_match = {
                                 "name": node_name,
                                 "role": node_role,
-                                "x": rect.x + rect.width // 2,
-                                "y": rect.y + rect.height // 2,
+                                "x": abs_x + rect.width // 2,
+                                "y": abs_y + rect.height // 2,
                                 "bounds": {
-                                    "x": rect.x, "y": rect.y,
+                                    "x": abs_x, "y": abs_y,
                                     "width": rect.width, "height": rect.height
                                 }
                             }
@@ -309,11 +341,9 @@ def click_element(app_class, element_name, button="left", role_hint=None):
     if not match:
         return {"success": False, "error": f"Element '{element_name}' not found in '{app_class}'"}
 
-    # Focus the app window first
-    focus_window(class_name=app_class)
-    time.sleep(0.1)
-
     # Click at the element's absolute center
+    # Compositor warp positions cursor on target surface, ydotool delivers click
+    # No need to focus_window — cursor position determines click target on Wayland
     success = click(x=match["x"], y=match["y"], button=button)
     return {
         "success": success,
@@ -352,6 +382,8 @@ def list_elements(app_class):
         return {"success": False, "error": "No windows found"}
 
     win_class = target_win.get("class", "")
+    win_x = target_win.get("x", 0)
+    win_y = target_win.get("y", 0)
 
     desktop = Atspi.get_desktop(0)
     atspi_app = None
@@ -376,13 +408,13 @@ def list_elements(app_class):
             name = (node.get_name() or "").strip()
             role = (node.get_role_name() or "").strip()
             if name and role:
-                rect = node.get_extents(0)
-                if rect.width > 0 and rect.height > 0:
+                rect = node.get_extents(1)  # WINDOW-relative coords
+                if rect.width > 0 and rect.height > 0 and rect.x > -10000 and rect.y > -10000:
                     elements.append({
                         "name": name,
                         "role": role,
-                        "center_x": rect.x + rect.width // 2,
-                        "center_y": rect.y + rect.height // 2,
+                        "center_x": win_x + rect.x + rect.width // 2,
+                        "center_y": win_y + rect.y + rect.height // 2,
                     })
             child_count = node.get_child_count()
             for i in range(child_count):
@@ -520,7 +552,7 @@ def main():
 
     elif action == "move":
         x, y = int(sys.argv[2]), int(sys.argv[3])
-        success = move_mouse(x, y)
+        success = move_mouse_smooth(x, y)
         print(json.dumps({"success": success, "x": x, "y": y}))
 
     elif action == "type":
