@@ -159,7 +159,16 @@ def move_mouse_smooth(target_x, target_y):
         time.sleep(step_delay)
 
     # Ensure final warp reaches absolute destination
-    return move_mouse(target_x, target_y)
+    success = move_mouse(target_x, target_y)
+
+    # Kernel-level relative nudge to force hover/enter highlight update in GTK/Qt
+    try:
+        subprocess.run(["ydotool", "mousemove", "--", "1", "1"], capture_output=True)
+        subprocess.run(["ydotool", "mousemove", "--", "-1", "-1"], capture_output=True)
+    except Exception:
+        pass
+
+    return success
 
 
 # ─── Click at Coordinates ────────────────────────────────────────────────────
