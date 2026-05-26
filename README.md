@@ -1,5 +1,10 @@
 # Hermes Agent Backup
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Platform: Arch Linux](https://img.shields.io/badge/platform-Arch%20Linux-blue.svg)](https://archlinux.org/)
+[![Engine: Hermes Agent](https://img.shields.io/badge/engine-Hermes%20Agent-purple.svg)](https://github.com/NousResearch/hermes-agent)
+[![Setup: Compile--Free](https://img.shields.io/badge/setup-Compile--Free-success)](https://github.com/xCaptaiN09/hermes-backup)
+
 > [!WARNING]
 > **Experimental & Under Active Development**
 > This backup configuration, automation environment, and associated restoration files are under active, experimental development and are **not a final-grade production product**. System-level automation, file-system patching, and approval overrides can interact unpredictably with security policies, desktop configuration updates, and hardware drivers. Ensure you have proper system backups before attempting full restoration.
