@@ -1,5 +1,9 @@
 # Hermes Agent Backup
 
+> [!WARNING]
+> **Experimental & Under Active Development**
+> This backup configuration, automation environment, and associated restoration files are under active, experimental development and are **not a final-grade production product**. System-level automation, file-system patching, and approval overrides can interact unpredictably with security policies, desktop configuration updates, and hardware drivers. Ensure you have proper system backups before attempting full restoration.
+
 This repository stores all critical configurations, memories, patched files, and integration drivers to completely restore the **Hermes Agent** on a new Arch Linux + Hyprland installation.
 
 With our pre-compiled C++ compositor plugin binary backed up directly in this folder, you **do not need to compile anything** or keep the development repository cloned. Setting up the agent on a new system is completely compile-free and takes seconds.
